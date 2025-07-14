@@ -1,12 +1,22 @@
 package com.playdata.approvalservice.common.auth;
 
+import com.playdata.approvalservice.common.dto.EmployeeResDto;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.util.Date;
+import java.util.List;
 
 @Component
 public class JwtTokenProvider {
@@ -23,6 +33,8 @@ public class JwtTokenProvider {
 
     @Value("${jwt.expirationRt}")
     private int expirationRt;
+
+
 
     public String createToken(String email, String role){
         // Claims: 페이로드에 들어갈 사용자 정보
@@ -85,4 +97,5 @@ public class JwtTokenProvider {
                 .role(Role.valueOf(claims.get("role", String.class)))
                 .build();
     }
+
 }

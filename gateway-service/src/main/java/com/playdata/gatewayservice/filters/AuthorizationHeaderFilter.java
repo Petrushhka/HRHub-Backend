@@ -27,25 +27,26 @@ public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory {
     private String secretKey;
 
     private final List<String> allowedPaths = List.of(
-            "/hr/employees",
+//            "/hr/employees",
             "/hr/employees/login",
             "/hr/employees/password",
 //            "/hr/employees/*",
             "/hr/employees/email/verification/*",
             "/hr/departments", "/hr/departments/*",
             "/badges/**",
-            "/icons/**", "/notice",
+            "/icons/**",
             "/hr/employees/password",
             "/hr/departments",
             "/hr/departments/*",
             "/**/swagger-ui.html",
             "/**/swagger-ui/**",
             "/**/v3/api-docs/**",
-            "/notice",
+            "/notice/spellcheck",
 //            "/notice/noticeboard", "/notice/noticeboard/*",
 //            "/notice/noticeboard/write", "/notice/noticeboard/department/**",
             "/notice/reviews/user/*", "/hr/user/*",
-            "/actuator/**"
+            "/actuator/**",
+            "/hr/refresh"
     );
 
     @Override

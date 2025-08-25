@@ -1,12 +1,10 @@
 package com.playdata.noticeservice.notice.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
-import jakarta.validation.groups.Default;
 import lombok.*;
-import org.bouncycastle.jcajce.provider.drbg.DRBG;
 
 import java.time.LocalDateTime;
-import java.time.LocalDate;
 
 
 @Getter
@@ -17,34 +15,43 @@ import java.time.LocalDate;
 @Builder
 @Entity
 
-@Table(name = "tbl_board")
+@Table(name = "tbl_notice")
 public class Notice {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long noticeId;
     private String title;
     @Column(columnDefinition = "TEXT")
     private String content;
     private Long employeeId;
     private Long departmentId;
-    private boolean notice; // 공지 여부
-    private LocalDate createdAt;
+
+    private boolean published = false; // 게시 여부
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime scheduledAt;   // 예약 시간
+
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String attachmentUri;
     private boolean boardStatus;
     private int viewCount = 0;
+//    @Enumerated(EnumType.ORDINAL) // 👈 추가
+    private int position;
 
 
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDate.now();
-        this.updatedAt = LocalDateTime.now();
+    // Setter with enum
+    public void setPosition(int position) {
+        this.position = position;
     }
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+    // Getter with enum
+    public Position getPositionEnum() {
+        return Position.values()[this.position];
+    }
+
+    // Optional: position 필드 접근 getter도 유지 가능
+    public int getPosition() {
+        return this.position;
     }
 
 }

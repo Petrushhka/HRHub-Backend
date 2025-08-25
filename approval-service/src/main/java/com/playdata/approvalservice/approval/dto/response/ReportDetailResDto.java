@@ -4,7 +4,9 @@ import com.playdata.approvalservice.approval.entity.ApprovalStatus;
 import com.playdata.approvalservice.approval.entity.ReportStatus;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Getter @Setter @ToString
 @NoArgsConstructor @AllArgsConstructor @Builder
@@ -20,6 +22,15 @@ public class ReportDetailResDto {
     private List<ApprovalLineResDto> approvalLine;
     private String currentApprover;
     private String dueDate;
+
+    private Map<String, Object> template;
+    private Map<String, Object> formData;
+
+    private Long templateId;
+
+    // 저장된 예약 정보를 클라이언트에 전달하기 위함
+    private boolean published;
+    private LocalDateTime scheduledAt;
 
     @Getter @Setter @ToString
     @NoArgsConstructor

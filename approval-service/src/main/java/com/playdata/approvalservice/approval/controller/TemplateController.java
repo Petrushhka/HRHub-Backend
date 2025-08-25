@@ -14,13 +14,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasAnyRole('HR_MANAGER','ADMIN')")
 @RequestMapping("/approval/templates")
 public class TemplateController {
 
@@ -29,6 +29,7 @@ public class TemplateController {
     /**
      * 템플릿 생성
      */
+    @PreAuthorize("hasAnyRole('HR_MANAGER','ADMIN')")
     @PostMapping("/create")
     public ResponseEntity<CommonResDto> templateCreate(
             @RequestBody @Valid TemplateCreateReqDto req,
@@ -52,17 +53,22 @@ public class TemplateController {
     }
 
     /**
-     * 템플릿 전부 조회
+     * 템플릿 목록 조회 (카테고리 ID로 필터링 가능)
+     * @param categoryId 쿼리 파라미터 (필수 아님)
+     * @return 템플릿 목록 응답
      */
     @GetMapping("/list")
-    public ResponseEntity<CommonResDto> getAllTemplates() {
-        List<TemplateResDto> res = templateService.getAllTemplates();
+    public ResponseEntity<CommonResDto> getTemplates(
+            @RequestParam(name = "categoryId", required = false) Long categoryId
+    ) {
+        List<TemplateResDto> res = templateService.getTemplates(categoryId);
         return ResponseEntity.ok(new CommonResDto(HttpStatus.OK, "보고서 템플릿 조회 완료", res));
     }
 
     /**
      * 템플릿 수정
      */
+    @PreAuthorize("hasAnyRole('HR_MANAGER','ADMIN')")
     @PutMapping("/{templateId}")
     public ResponseEntity<CommonResDto> templateUpdate(
             @PathVariable Long templateId,
@@ -76,6 +82,7 @@ public class TemplateController {
     /**
      * 템플릿 삭제
      */
+    @PreAuthorize("hasAnyRole('HR_MANAGER','ADMIN')")
     @DeleteMapping("/{templateId}")
     public ResponseEntity<CommonResDto> templateDelete(
             @PathVariable Long templateId,

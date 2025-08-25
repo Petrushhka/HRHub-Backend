@@ -1,24 +1,32 @@
 package com.playdata.noticeservice.notice.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.playdata.noticeservice.common.auth.CustomUserDetails;
+import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriUtils;
+import com.playdata.global.dto.AlertResponse;
+import com.playdata.global.enums.AlertMessage;
 import com.playdata.noticeservice.common.auth.TokenUserInfo;
 import com.playdata.noticeservice.common.client.DepartmentClient;
-import com.playdata.noticeservice.common.dto.CommonErrorDto;
 import com.playdata.noticeservice.common.client.HrUserClient;
 import com.playdata.noticeservice.common.dto.DepResponse;
 import com.playdata.noticeservice.common.dto.HrUserResponse;
 import com.playdata.noticeservice.notice.dto.*;
 import com.playdata.noticeservice.notice.entity.Notice;
-import com.playdata.noticeservice.notice.service.NoticeService;
+import com.playdata.noticeservice.notice.entity.Position;
 
+import com.playdata.noticeservice.notice.repository.NoticeRepository;
+import com.playdata.noticeservice.notice.service.NoticeService_v2;
 import com.playdata.noticeservice.notice.service.S3Service;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
 import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,19 +36,26 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import org.jsoup.nodes.Document;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-
+//@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/notice")
 @RequiredArgsConstructor
@@ -48,133 +63,178 @@ import java.util.stream.Stream;
 public class NoticeController {
 
     private final Environment env;
-    private final NoticeService noticeService;
+    private final NoticeService_v2 noticeService;
     private final HrUserClient hrUserClient;
     private final DepartmentClient departmentClient;
     private final ObjectMapper objectMapper;
     private final S3Service s3Service;
+    private final NoticeRepository noticeRepository;
 
-    // 전체글 조회
-    @GetMapping("/noticeboard")
-    public ResponseEntity<Map<String, Object>> getAllPosts(
+
+    // ---------------------- 공지사항 API (직급별 필터링) ----------------------
+
+    @GetMapping
+    public ResponseEntity<Map<String, Object>> getGeneralNoticesByPosition(
+            @AuthenticationPrincipal TokenUserInfo userInfo,
             @RequestParam(defaultValue = "") String keyword,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate toDate,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int pageSize,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir
-    ) {
+            HttpServletRequest request) {
+
         if (keyword != null && keyword.isBlank()) {
             keyword = null;
         }
 
-        log.info("~~~게시글 조회 페이지 진입함~~~");
-        Sort.Direction direction = sortDir.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(direction, sortBy));
+        String token = request.getHeader("Authorization");  // 토큰 꺼내기
 
         boolean hasFilter = !((keyword == null || keyword.isBlank()) && fromDate == null && toDate == null);
+        List<Notice> generalNotices;
+        Page<Notice> depNotices;
 
-
-        List<Notice> topNotices;
-        Page<Notice> posts;
+        // 1. 사용자 직급 ID 조회 (직급 정보가 TokenUserInfo에 없으면 HrUserClient로 조회)
+        HrUserResponse user = hrUserClient.getUserInfo(userInfo.getEmployeeId());
+        Position position = user.getPosition();  // 직급 ID
 
         if (hasFilter) {
-            List<Notice> filteredTop = noticeService.getFilteredNotices(keyword, fromDate, toDate, sortBy, sortDir);
-            topNotices = filteredTop.stream().limit(10).toList();
-
-            // 나머지 공지글 + 일반글 필터링한 결과를 수동 페이징 처리
-            posts = noticeService.getFilteredPosts(keyword, fromDate, toDate, pageable);
+            generalNotices = noticeService.getFilteredGeneralNotices(position, 0L, keyword, fromDate, toDate, page, pageSize, sortBy, sortDir);
+            depNotices = noticeService.getFilteredDepartmentNotices(position, keyword, fromDate, toDate, user.getDepartmentId(), page, pageSize, sortBy, sortDir);
         } else {
-            topNotices = noticeService.getAllNotices(sortBy, sortDir).stream().limit(10).toList();
-            posts = noticeService.getMergedPostsAfterTop10(pageable);
+            // 부서 전체 공지글 5개
+            generalNotices = noticeService.getTopGeneralNotices(sortBy, sortDir, position).stream().limit(5).toList();
+            // 부서 공지글
+            depNotices = noticeService.getMyDepartmentNotices(position, user.getDepartmentId(), page, pageSize, sortBy, sortDir);
         }
 
+        log.info("부서 전체 공지글 5개 : {}", generalNotices);
+        log.info("부서 공지글 : {}", depNotices);
 
-        // ✅ 유저 정보 포함하여 DTO 변환
-        List<NoticeResponse> noticeDtos = topNotices.stream()
-                .map(n -> {
-                    HrUserResponse user = hrUserClient.getUserInfo(n.getEmployeeId());
-                    return NoticeResponse.fromEntity(n, user);
-                })
-                .toList();
+        Set<Long> employeeIds = Stream.concat(generalNotices.stream(), depNotices.stream())
+                .map(Notice::getEmployeeId)
+                .collect(Collectors.toSet());
 
-        List<NoticeResponse> postDtos = posts.stream()
-                .map(n -> {
-                    HrUserResponse user = hrUserClient.getUserInfo(n.getEmployeeId());
-                    return NoticeResponse.fromEntity(n, user);
-                })
-                .toList();
+        log.info("employeeIds : {}", employeeIds);
 
+        // 3. 작성자 정보 매핑
+        Map<Long, HrUserResponse> userMap = hrUserClient.getUserInfoBulk(employeeIds, token)
+                .stream().collect(Collectors.toMap(HrUserResponse::getEmployeeId, Function.identity()));
+
+        log.info("작성자 정보 매핑 : {}", userMap);
 
         Map<String, Object> response = new HashMap<>();
-        response.put("notices", noticeDtos);
-        response.put("posts", postDtos);
-        response.put("totalPages", posts.getTotalPages());
-        response.put("currentPage", posts.getNumber());
-        log.info("response 결과 확인");
-        log.info(response.toString());
+        response.put("generalNotices", generalNotices.stream()
+                .map(n -> {
+                    HrUserResponse writer = userMap.get(n.getEmployeeId());
+                    log.info("user : {}",writer);
+                    int commentCount = noticeService.getCommentCountByNoticeId(n.getNoticeId());
+                    return NoticeResponse.fromEntity(n, writer, commentCount);
+                }).toList());
 
+
+        response.put("notices", depNotices.stream()
+                .map(n -> {
+                    HrUserResponse writer = userMap.get(n.getEmployeeId());
+                    int commentCount = noticeService.getCommentCountByNoticeId(n.getNoticeId());
+                    return NoticeResponse.fromEntity(n, writer, commentCount);
+                }));
+
+        response.put("totalPages", depNotices.getTotalPages());
+        response.put("currentPage", depNotices.getNumber());
+        log.info("response : {}", response);
         return ResponseEntity.ok(response);
     }
 
-    // 내가 쓴 글 조회
-    @GetMapping("/noticeboard/my")
-    public ResponseEntity<List<NoticeResponse>> getMyPosts(@AuthenticationPrincipal TokenUserInfo userInfo) {
-        List<Notice> notices = noticeService.getMyPosts(userInfo.getEmployeeId());
 
-        List<NoticeResponse> responseList = notices.stream()
-                .map(notice -> {
-                    HrUserResponse user = hrUserClient.getUserInfo(notice.getEmployeeId());
-                    return NoticeResponse.fromEntity(notice, user);
-                })
-                .toList();
-
-        return ResponseEntity.ok(responseList);
-    }
-
-    // 나의 부서글 조회
-    @GetMapping("/noticeboard/mydepartment")
-    public ResponseEntity<List<NoticeResponse>> getDepartmentPosts(
+    // 내가 쓴 글 조회(공지글)
+    @GetMapping("/my")
+    public ResponseEntity<Map<String, Object>> getMyNotice(
+            @AuthenticationPrincipal TokenUserInfo userInfo,
             @RequestParam(defaultValue = "") String keyword,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate toDate,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int pageSize,
-            @AuthenticationPrincipal TokenUserInfo userInfo) {
+            HttpServletRequest request) {
+        List<Notice> notices = noticeService.getMyNotices(userInfo.getEmployeeId(), keyword, fromDate, toDate, page, pageSize, sortBy, sortDir);
 
-        Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
-        List<Notice> notices = noticeService.getNoticesByDepartment(userInfo.getDepartmentId(), keyword, fromDate, toDate);
-        List<Notice> posts = noticeService.getPostsByDepartment(userInfo.getDepartmentId(), keyword, fromDate, toDate, pageable);
+        String token = request.getHeader("Authorization");
 
-        List<NoticeResponse> responseList = Stream.concat(notices.stream(), posts.stream())
-                .map(notice -> {
-                    HrUserResponse writer = hrUserClient.getUserInfo(notice.getEmployeeId());
-                    return NoticeResponse.fromEntity(notice, writer);
-                })
-                .toList();
+        Map<Long, HrUserResponse> userMap = hrUserClient.getUserInfoBulk(
+                notices.stream().map(Notice::getEmployeeId).collect(Collectors.toSet())
+        , token).stream().collect(Collectors.toMap(HrUserResponse::getEmployeeId, Function.identity()));
 
-        return ResponseEntity.ok(responseList);
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("mynotices", notices.stream()
+                .map(n -> {
+                    HrUserResponse user = userMap.get(n.getEmployeeId());
+                    int commentCount = noticeService.getCommentCountByNoticeId(n.getNoticeId()); // ✅ 댓글 수
+                    return NoticeResponse.fromEntity(n, user, commentCount); // ✅ 댓글 수 포함
+                }).toList());
+        return ResponseEntity.ok(response);
     }
 
+    // 예약한 글 조회(공지글)
+    @GetMapping("/schedule")
+    public ResponseEntity<Map<String, Object>> getMyScheduledNotice(
+            @AuthenticationPrincipal TokenUserInfo userInfo,
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate fromDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate toDate,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            HttpServletRequest request) {
+        List<Notice> notices = noticeService.getMyScheduledNotice(userInfo.getEmployeeId(), keyword, fromDate, toDate, page, pageSize, sortBy, sortDir);
+
+        String token = request.getHeader("Authorization");
+
+        Map<Long, HrUserResponse> userMap = hrUserClient.getUserInfoBulk(
+                notices.stream().map(Notice::getEmployeeId).collect(Collectors.toSet())
+                , token).stream().collect(Collectors.toMap(HrUserResponse::getEmployeeId, Function.identity()));
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put("myschedule", notices.stream()
+                .map(n -> {
+                    HrUserResponse user = userMap.get(n.getEmployeeId());
+                    int commentCount = noticeService.getCommentCountByNoticeId(n.getNoticeId()); // ✅ 댓글 수
+                    return NoticeResponse.fromEntity(n, user, commentCount); // ✅ 댓글 수 포함
+                }).toList());
+        return ResponseEntity.ok(response);
+    }
+
+
     // 글 상세 화면 조회
-    @GetMapping("/noticeboard/{id}")
-    public ResponseEntity<NoticeResponse> getPost(@PathVariable Long id) {
-        Notice notice = noticeService.findPostById(id);
+    @GetMapping("/{noticeId:\\d+}")
+    public ResponseEntity<NoticeResponse> getGeneralPost(
+            @PathVariable Long noticeId,
+            @AuthenticationPrincipal TokenUserInfo userInfo,
+            HttpServletRequest request
+            ) {
+        String token = request.getHeader("Authorization");  // 토큰 꺼내기
+
+        Notice notice = noticeService.findPostById(noticeId);
         HrUserResponse user = hrUserClient.getUserInfo(notice.getEmployeeId());
         DepResponse dep = departmentClient.getDepInfo(notice.getDepartmentId());
         return ResponseEntity.ok(NoticeResponse.fromEntity(notice, user, dep));
     }
 
+
     // 글 작성 페이지
-    @PostMapping("/noticeboard/write")
-    public ResponseEntity<Void> createNotice(
+    @PostMapping("/write")
+    public ResponseEntity<AlertResponse> createNotice(
             @RequestBody @Valid NoticeCreateRequest request,
             @AuthenticationPrincipal TokenUserInfo userInfo
     ) throws IOException {
         Long employeeId = userInfo.getEmployeeId();
         HrUserResponse user = hrUserClient.getUserInfo(employeeId);
-
         // ✅ attachmentUri를 List<String>으로 변환
         List<String> attachmentUri = Collections.emptyList();
         if (request.getAttachmentUri() != null && !request.getAttachmentUri().isBlank()) {
@@ -182,83 +242,167 @@ public class NoticeController {
         }
 
         // ✅ 실제 서비스 호출
-        noticeService.createNotice(request, employeeId, user.getDepartmentId(), attachmentUri);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        noticeService.createNotice(request, user, attachmentUri);
+        return ResponseEntity.ok(new AlertResponse(AlertMessage.NOTICE_CREATE_SUCCESS.getMessage(), "success"));
     }
 
 
-    @GetMapping("/noticeboard/upload-url")
-    public ResponseEntity<String> generateUploadUrl(
+    @GetMapping("/upload-url")
+    public ResponseEntity<String> generateUploadNoticeUrl(
             @RequestParam String fileName,
             @RequestParam String contentType) {
         String url = s3Service.generatePresignedUrlForPut(fileName, contentType);
         return ResponseEntity.ok(url);
     }
 
-    @GetMapping("/noticeboard/download-url")
-    public ResponseEntity<String> generateDownloadUrl(@RequestParam String fileName) {
+
+    @GetMapping("/download-url")
+    public ResponseEntity<String> generateDownloadNoticeUrl(@RequestParam String fileName) {
         String url = s3Service.generatePresignedUrlForGet(fileName, "application/octet-stream");
         return ResponseEntity.ok(url);
     }
 
 
     // 글 수정 페이지
-    @PutMapping(value = "/noticeboard/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<Void> updateNotice(
-            @PathVariable Long id,
+    @PutMapping(value = "/edit/{noticeId:\\d+}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AlertResponse> updateNotice(
+            @PathVariable Long noticeId,
             @RequestBody @Valid NoticeUpdateRequest request,
             @AuthenticationPrincipal TokenUserInfo userInfo) {
 
         Long employeeId = userInfo.getEmployeeId();
+        HrUserResponse user = hrUserClient.getUserInfo(employeeId);
         // 파일이 없기 때문에 null 전달 또는 별도 처리
-        noticeService.updateNotice(id, request, employeeId);
-        return ResponseEntity.ok().build();
+        noticeService.updateNotice(noticeId, request, user);
+        return ResponseEntity.ok(new AlertResponse(AlertMessage.NOTICE_UPDATE_SUCCESS.getMessage(), "success"));
     }
 
 
+    // 글 삭제 (board_status = false)
+    @DeleteMapping("/delete/{noticeId:\\d+}")
+    public ResponseEntity<AlertResponse> deleteNotice(@PathVariable Long noticeId,
+                                           @AuthenticationPrincipal TokenUserInfo userInfo) throws JsonProcessingException {
+        noticeService.deletePost(noticeId, userInfo.getEmployeeId());
+//        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(new AlertResponse(AlertMessage.NOTICE_DELETE_SUCCESS.getMessage(), "success"));
+    }
 
+    // 예약 목록은 실제로 db에서 삭제
+    @DeleteMapping("/schedule/{noticeId:\\d+}")
+    public ResponseEntity<?> deleteScheduledNotice(@PathVariable Long noticeId, @AuthenticationPrincipal TokenUserInfo userInfo) {
+        Notice notice = noticeRepository.findById(noticeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "게시글 없음"));
 
+        // 작성자 또는 관리자 권한 확인
+        if (!userInfo.getEmployeeId().equals(notice.getEmployeeId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
 
-    // 글 삭제
-    @DeleteMapping("/noticeboard/{id}")
-    public ResponseEntity<Void> deletePost(@PathVariable Long id,
-                                           @AuthenticationPrincipal TokenUserInfo userInfo) {
-        noticeService.deletePost(id, userInfo.getEmployeeId());
-        return ResponseEntity.noContent().build();
+        // 아직 발행되지 않은 글만 삭제 가능
+        if (notice.isPublished()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("이미 게시된 글은 삭제할 수 없습니다.");
+        }
+
+        noticeRepository.delete(notice);
+        return ResponseEntity.ok("삭제 완료");
     }
 
     // ✅ 공지글 읽음 처리
-    @PostMapping("/noticeboard/{id}/read")
-    public ResponseEntity<Void> markAsRead(@AuthenticationPrincipal TokenUserInfo userInfo,
-                                           @PathVariable Long id) {
-        log.info("/noticeboard/{}/read: POST", id);
+    @PostMapping("/{noticeId:\\d+}/read")
+    public ResponseEntity<Void> markAsReadNotice(@AuthenticationPrincipal TokenUserInfo userInfo,
+                                           @PathVariable Long noticeId) {
+        log.info("/noticeboard/{}/read: POST", noticeId);
         log.info("userInfo: {}", userInfo);
-        noticeService.markAsRead(userInfo.getEmployeeId(), id);
+        noticeService.markAsRead(userInfo.getEmployeeId(), noticeId);
         return ResponseEntity.ok().build();
     }
 
 
     // 읽지 않은 공지글 카운트
-    @GetMapping("/noticeboard/unread-count")
+    @GetMapping("/unread-count")
     public ResponseEntity<Integer> getUnreadNoticeCount(
             @AuthenticationPrincipal TokenUserInfo userInfo
     ) {
+        log.info("/general/unread-count: POST, userInfo: {}", userInfo);
         Long userId = userInfo.getEmployeeId();
         HrUserResponse user = hrUserClient.getUserInfo(userId);
-        int count = noticeService.countUnreadNotices(userId, user.getDepartmentId());
+        Position position = user.getPosition();  // 직급 ID
+
+        int count = noticeService.countUnreadNotices(position ,userId, user.getDepartmentId());
         return ResponseEntity.ok(count);
     }
 
 
     // 👉 추후 기타 알림 (ex: 전자결재, 일정 알림 등) 도 여기에 추가할 수 있음.
-    @GetMapping("/noticeboard/alerts")
+    @GetMapping("/alerts")
     public ResponseEntity<Map<String, List<NoticeResponse>>> getUserAlerts(
             @AuthenticationPrincipal TokenUserInfo userInfo
     ) {
         Long userId = userInfo.getEmployeeId();
         HrUserResponse user = hrUserClient.getUserInfo(userId);
-        Map<String, List<NoticeResponse>> result = noticeService.getUserAlerts(userId, user.getDepartmentId());
+        Position position = user.getPosition();  // 직급 ID
+
+        Map<String, List<NoticeResponse>> result = noticeService.getUserAlerts(position, userId, user.getDepartmentId());
         return ResponseEntity.ok(result);
+    }
+
+    ///////////////////////////댓글 Controller//////////////////////////////
+
+    // ✅ 댓글 작성
+    @PostMapping("/{noticeId:\\d+}/comments")
+    public ResponseEntity<Void> createNoticeComment(@PathVariable Long noticeId,
+                                              @RequestBody @Valid CommentCreateRequest request,
+                                              @AuthenticationPrincipal TokenUserInfo userInfo) {
+        noticeService.createComment(noticeId, request, userInfo.getEmployeeId());
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    // ✅ 댓글 목록 조회
+    @GetMapping("/{noticeId:\\d+}/comments")
+    public ResponseEntity<List<NoticeCommentResponse>> getNoticeComments(@PathVariable Long noticeId) {
+        List<NoticeCommentResponse> comments = noticeService.getComments(noticeId);
+        return ResponseEntity.ok(comments);
+    }
+
+    // ✅ 댓글 수정
+    @PutMapping("/{noticeId:\\d+}/comments/{commentId}")
+    public ResponseEntity<Void> updateNoticeComment(@PathVariable Long noticeId,
+                                              @PathVariable Long commentId,
+                                              @RequestBody @Valid CommentUpdateRequest request,
+                                              @AuthenticationPrincipal TokenUserInfo userInfo) {
+        noticeService.updateComment(noticeId, commentId, request, userInfo.getEmployeeId());
+        return ResponseEntity.ok().build();
+    }
+
+    // ✅ 댓글 삭제
+    @DeleteMapping("/{noticeId:\\d+}/comments/{commentId}")
+    public ResponseEntity<Void> deleteNoticeComment(@PathVariable Long noticeId,
+                                              @PathVariable Long commentId,
+                                              @AuthenticationPrincipal TokenUserInfo userInfo) {
+        noticeService.deleteComment(noticeId, commentId, userInfo.getEmployeeId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{noticeId:\\d+}/comments/count")
+    public ResponseEntity<CommonResDto> getNoticeCommentCount(@PathVariable Long noticeId) {
+        int count = noticeService.getCommentCountByNoticeId(noticeId);
+        return ResponseEntity.ok(CommonResDto.success("댓글 수 조회 성공", Map.of("commentCount", count)));
+    }
+
+    // ✅ 즐겨 찾기 ===============================================
+    @PostMapping("/favorites/{noticeId}")
+    public ResponseEntity<?> toggleFavorite(@PathVariable Long noticeId,
+                                            @AuthenticationPrincipal TokenUserInfo userInfo) {
+        Long userId = userInfo.getEmployeeId();
+        noticeService.toggleFavorite(userId, noticeId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/favorites")
+    public ResponseEntity<List<Long>> getFavorites(@AuthenticationPrincipal TokenUserInfo userInfo) {
+        Long userId = userInfo.getEmployeeId();
+        List<Long> favorites = noticeService.getFavoriteNoticeIds(userId);
+        return ResponseEntity.ok(favorites);
     }
 
 }

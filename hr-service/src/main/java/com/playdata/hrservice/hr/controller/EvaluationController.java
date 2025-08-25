@@ -1,12 +1,14 @@
 package com.playdata.hrservice.hr.controller;
 
+import com.playdata.hrservice.common.auth.TokenUserInfo;
 import com.playdata.hrservice.common.dto.CommonResDto;
-import com.playdata.hrservice.hr.dto.EmployeeResDto;
-import com.playdata.hrservice.hr.dto.EvaluationListResDto;
-import com.playdata.hrservice.hr.dto.EvaluationReqDto;
-import com.playdata.hrservice.hr.dto.EvaluationResDto;
+import com.playdata.hrservice.hr.dto.*;
+import com.playdata.hrservice.hr.entity.Employee;
 import com.playdata.hrservice.hr.entity.Evaluation;
+import com.playdata.hrservice.hr.service.EmployeeService;
 import com.playdata.hrservice.hr.service.EvaluationService;
+import com.playdata.hrservice.hr.service.PickTop3CacheService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -16,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.YearMonth;
 import java.util.List;
 
 @RestController
@@ -24,6 +27,7 @@ import java.util.List;
 @Slf4j
 public class EvaluationController {
     private final EvaluationService evaluationService;
+    private final PickTop3CacheService pickTop3CacheService;
 
     // 인사 평가
     @PreAuthorize("hasRole('ADMIN') or hasRole('HR_MANAGER')")
@@ -45,33 +49,47 @@ public class EvaluationController {
 
     // 인사평가 조회 By 직원 ID
     @GetMapping("/evaluation/{employeeId}")
-    public ResponseEntity<CommonResDto> getEvaluation(@PathVariable Long employeeId) {
-        CommonResDto commonResDto = new CommonResDto(HttpStatus.OK,
+    public ResponseEntity<CommonResDto<EvaluationResDto>> getEvaluation(@PathVariable Long employeeId) {
+        CommonResDto<EvaluationResDto> commonResDto = new CommonResDto<>(HttpStatus.OK,
                 "Success", evaluationService.getLatestEvaluation(employeeId));
         return new ResponseEntity<>(commonResDto, HttpStatus.OK);
     }
 
     // 인사평가 본인 이력 리스트 조회
     @GetMapping("/evaluations/{employeeId}")
-    public ResponseEntity<CommonResDto> getEvaluationListByEmployeeId(@PathVariable Long employeeId, Pageable pageable) {
+    public ResponseEntity<CommonResDto<Page<EvaluationListResDto>>> getEvaluationListByEmployeeId(@PathVariable Long employeeId, Pageable pageable) {
         Page<EvaluationListResDto> dtos = evaluationService.getEvaluationListByEmployeeId(employeeId, pageable);
         log.info(dtos.toString());
-        return new ResponseEntity<>(new CommonResDto(HttpStatus.OK, "Success", dtos), HttpStatus.OK);
+        return new ResponseEntity<>(new CommonResDto<>(HttpStatus.OK, "Success", dtos), HttpStatus.OK);
     }
 
     // 인사평가 이력 상세 조회
     @GetMapping("/evaluation/detail/{evaluationId}")
-    public ResponseEntity<CommonResDto> getEvaluationByEvaluationId(@PathVariable Long evaluationId) {
+    public ResponseEntity<CommonResDto<EvaluationResDto>> getEvaluationByEvaluationId(@PathVariable Long evaluationId) {
         EvaluationResDto dto = evaluationService.getEvaluationByEvaluationId(evaluationId);
         log.info(dto.toString());
-        return new ResponseEntity<>(new CommonResDto(HttpStatus.OK, "Success", dto), HttpStatus.OK);
+        return new ResponseEntity<>(new CommonResDto<>(HttpStatus.OK, "Success", dto), HttpStatus.OK);
     }
 
     @GetMapping("/top/employee")
     public ResponseEntity<?> getTopEmployee() {
-        List<EmployeeResDto> employeesOfTop3 = evaluationService.getEmployeesOfTop3();
-
-
+        YearMonth thisMonth = YearMonth.now().minusMonths(1);
+        List<EmployeeResDto> employeesOfTop3 = evaluationService.getEmployeesOfTop3(thisMonth);
         return new ResponseEntity<>(new CommonResDto(HttpStatus.OK, "Success", employeesOfTop3), HttpStatus.OK);
+    }
+    @GetMapping("/eom/top3")
+    public List<EmployeeResDto> currentTop3(){
+        return pickTop3CacheService.getCurrentTop3();
+    }
+
+    @PostMapping("/eom/{id}/top3")
+    public String greetingMessage(@PathVariable Long id,
+                                  @RequestBody @Valid MsgDto dto,
+                                  TokenUserInfo tokenUserInfo) {
+       if(tokenUserInfo.getEmployeeId().equals(id)) {
+           pickTop3CacheService.submitGreeting(id, dto);
+           return dto.getMessage();
+       }
+       else return null;
     }
 }

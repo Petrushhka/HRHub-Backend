@@ -26,18 +26,19 @@ import java.util.stream.Collectors;
 public class TemplateService {
 
     private final ReportTemplateRepository templateRepository;
-    private TemplateCategoryRepository categoryRepository;
+    private final TemplateCategoryRepository categoryRepository;
     private final ObjectMapper objectMapper;
 
     /**
      * 템플릿 생성
+     *
      * @param req
      * @return
      */
     @Transactional
     public TemplateResDto createTemplate(TemplateCreateReqDto req) {
 
-        TemplateCategory category = categoryRepository.findByCategoryId(req.getCategoryId())
+        TemplateCategory category = categoryRepository.findById(req.getCategoryId())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다. id=" + req.getCategoryId()));
         try {
@@ -47,7 +48,7 @@ public class TemplateService {
             // 2. Builder를 사용하여 직접 엔티티 생성
             ReportTemplate newTemplate = ReportTemplate.builder()
                     .template(jsonTemplate)
-                    .category(category)
+                    .categoryId(category)
                     .build();
 
             // 3. 엔티티 저장
@@ -62,6 +63,12 @@ public class TemplateService {
         }
     }
 
+    /**
+     * 템플릿 목록 조회
+     *
+     * @param templateId
+     * @return
+     */
     public TemplateResDto getTemplate(Long templateId) {
         ReportTemplate template = findTemplateById(templateId);
         try {
@@ -75,11 +82,26 @@ public class TemplateService {
     @Transactional
     public TemplateResDto updateTemplate(Long templateId, TemplateUpdateReqDto req) {
         ReportTemplate template = findTemplateById(templateId);
+
         try {
+            if (req.getTemplate() != null) {
+                String updatedJson = objectMapper.writeValueAsString(req.getTemplate());
+                template.setTemplate(updatedJson);
+            }
+
+            if (req.getCategoryId() != null) {
+                // 새로 전달된 categoryId로 카테고리 엔티티를 DB에서 찾아옵니다.
+                TemplateCategory newCategory = categoryRepository.findById(req.getCategoryId())
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.NOT_FOUND, "변경하려는 카테고리를 찾을 수 없습니다. id=" + req.getCategoryId()));
+                template.setCategoryId(newCategory);
+                log.info("템플릿 ID {}의 카테고리를 {}로 변경했습니다.", templateId, req.getCategoryId());
+            }
             String updatedJson = objectMapper.writeValueAsString(req.getTemplate());
             template.setTemplate(updatedJson);
-            // templateRepository.save(template)는 Transactional 환경에서 생략 가능 (더티 체킹)
+
             return TemplateResDto.from(template, objectMapper);
+
         } catch (JsonProcessingException e) {
             log.error("템플릿 JSON 직렬화/파싱 실패 (수정): templateId={}", templateId, e);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "잘못된 템플릿 JSON 형식입니다.", e);
@@ -104,16 +126,26 @@ public class TemplateService {
     /**
      * 특정 카테고리에 속한 모든 템플릿 조회
      */
-    public List<TemplateResDto> getTemplatesByCategoryId(Long categoryId) {
+    public List<TemplateResDto> getTemplates(Long categoryId) {
         // 1. Repository에 정의한 메소드를 사용하여 특정 카테고리의 템플릿만 조회
-        List<ReportTemplate> templates = templateRepository.findByCategoryId(categoryId);
+        List<ReportTemplate> templates;
 
-        // 2. 조회된 템플릿 리스트를 DTO 리스트로 변환
+        if (categoryId != null) {
+            // categoryId가 제공되면, 해당 카테고리의 템플릿만 조회
+            log.info("카테고리 ID로 템플릿 필터링: {}", categoryId);
+            templates = templateRepository.findByCategoryId_categoryId(categoryId);
+        } else {
+            // categoryId가 null이면, 모든 템플릿 조회
+            log.info("모든 템플릿 조회");
+            templates = templateRepository.findAll();
+        }
+
+        // 조회된 템플릿 리스트를 DTO 리스트로 변환
         return templates.stream().map(template -> {
             try {
-                return TemplateResDto.from(template, objectMapper);
+                // objectMapper는 이미 주입받았으므로 new로 생성할 필요 없습니다.
+                return TemplateResDto.from(template, this.objectMapper);
             } catch (JsonProcessingException e) {
-                // 이 경우, DB에 저장된 JSON이 잘못된 형식일 가능성이 높음
                 log.error("DB의 템플릿 JSON 파싱 실패: templateId={}", template.getTemplateId(), e);
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "저장된 템플릿 데이터 파싱 오류");
             }
@@ -123,6 +155,7 @@ public class TemplateService {
 
     /**
      * 모든 템플릿 조회
+     *
      * @return
      */
     public List<TemplateResDto> getAllTemplates() {

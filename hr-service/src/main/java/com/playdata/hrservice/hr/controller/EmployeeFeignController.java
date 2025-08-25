@@ -49,4 +49,23 @@ public class EmployeeFeignController {
         Map<Long, String> employeeNames = employeeService.getEmployeeNamesByEmployeeIds(employeeIds);
         return ResponseEntity.ok(employeeNames);
     }
+
+    /**
+     * Feign 클라이언트에서 이메일 주소로 직원의 ID(PK)를 조회하기 위한 API입니다.
+     * GET /feign/employees/id?email=... 요청을 처리합니다.
+     */
+    @GetMapping("/id")
+    public ResponseEntity<Long> findIdByEmail(@RequestParam("email") String email) {
+        Long employeeId = employeeService.findIdByEmail(email);
+        return ResponseEntity.ok(employeeId);
+    }
+
+    /**
+     * Feign 클라이언트에서 재직 중인 모든 직원을 조회합니다.
+     * (결재선/참조자 선택 UI에서 사용)
+     */
+    @GetMapping("/list/active")
+    public ResponseEntity<List<EmployeeResDto>> getActiveEmployees() {
+        return ResponseEntity.ok(employeeService.findActiveEmployees());
+    }
 }

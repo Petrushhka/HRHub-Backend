@@ -25,4 +25,9 @@ public class ResubmitReqDto {
 
     private List<ReportDetailResDto.ReferenceJsonResDto> references;
 
+    private String reportTemplateData;
+
+    private Long templateId;
+
+
 }

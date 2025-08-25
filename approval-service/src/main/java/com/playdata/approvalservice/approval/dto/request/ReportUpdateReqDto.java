@@ -1,5 +1,6 @@
 package com.playdata.approvalservice.approval.dto.request;
 
+import com.playdata.approvalservice.approval.entity.ReportStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
@@ -18,7 +19,12 @@ public class ReportUpdateReqDto {
     @NotBlank
     private String content;
 
+    private ReportStatus status;
+
     private List<ApprovalLineReqDto> approvalLine;
     private List<AttachmentJsonReqDto> attachments;
     private List<ReferenceJsonReqDto> references;
+
+    private Long templateId;
+    private String reportTemplateData; // JSON 형식의 문자열
 }

@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.*;
 
+import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @Getter
@@ -23,10 +25,11 @@ public class ReportCreateReqDto {
     @NotEmpty
     private List<ApprovalLineReqDto> approvalLine;
 
-//    private List<AttachmentJsonReqDto> attachments;
+    private Long templateId;
 
     private List<ReferenceJsonReqDto> references;
 
     private String reportTemplateData;
 
+    private ZonedDateTime scheduledAt;
 }

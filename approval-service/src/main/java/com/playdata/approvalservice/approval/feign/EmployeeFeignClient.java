@@ -12,6 +12,7 @@ import java.util.Map;
 
 @FeignClient(name = "hr")
 public interface EmployeeFeignClient {
+
     /**
      * 직원 단건 조회
      * @param employeeId 조회할 직원의 ID
@@ -38,4 +39,20 @@ public interface EmployeeFeignClient {
     ResponseEntity<Map<Long, String>> getEmployeeNamesByEmployeeIds(
             @RequestParam("ids") List<Long> employeeIds
     );
+
+    /**
+     * 이메일 주소로 직원의 ID(PK)를 조회합니다.
+     * hr-service의 GET /feign/employees/id?email=... API를 호출합니다.
+     * @param email 조회할 직원의 이메일
+     * @return 직원의 ID(Long)가 담긴 ResponseEntity
+     */
+    @GetMapping("/feign/employees/id")
+    ResponseEntity<Long> findIdByEmail(@RequestParam("email") String email);
+
+    /**
+     * 모든 직원 status 조회
+     * @return
+     */
+    @GetMapping("/feign/employees/list/active")
+    ResponseEntity<List<EmployeeResDto>> getActiveEmployees();
 }

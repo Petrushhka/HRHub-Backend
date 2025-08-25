@@ -33,10 +33,14 @@ public class SecurityConfig {
         http.authorizeHttpRequests(auth -> {
             auth
 //                    .requestMatchers("/user/list").hasRole("ROLE_ADMIN")
-                    .requestMatchers("/hr/employees",
+                    .requestMatchers(
+//                            "/hr/employees",
                             "/hr/employees/*",
                             "/hr/employees/names",
                             "/hr/employees/login",
+                            "/hr/employees/email/verification/*",
+                            "/hr/refresh",
+                            "/hr/employees/email/verification/*",
                             "/hr/employees/password",
                             "/hr/departments", "/hr/departments/*",
                             "/hr/verify",

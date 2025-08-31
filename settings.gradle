@@ -1,0 +1,10 @@
+rootProject.name = "petwiz-back"
+
+include(
+        "approval-service",
+        "config-service",
+        "discovery-service",
+        "gateway-service",
+        "hr-service",
+        "notice-service"
+)

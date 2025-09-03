@@ -1,4 +1,9 @@
 
 spring:
   profiles:
-    active: dev
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: "file:///C:/Users/dutls/Desktop/work_place/yhj_Team_Project/hrhub-config"

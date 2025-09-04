@@ -8,4 +8,7 @@ spring:
     config:
       server:
         native:
-          search-locations: "file:///C:/Users/dutls/Desktop/work_place/yhj_Team_Project/hrhub-config"
+          search-locations: "/Users/dominus_pacem/Desktop/HRHub/HRHub-Config"
+
+#  "file:///C:/Users/dutls/Desktop/work_place/yhj_Team_Project/hrhub-config" 노트북 경로
+#  "/Users/dominus_pacem/Desktop/HRHub/HRHub-Config pc" 경로

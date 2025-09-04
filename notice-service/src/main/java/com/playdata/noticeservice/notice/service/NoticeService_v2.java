@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class NoticeService_v2 {
 
     private final NoticeRepository noticeRepository;

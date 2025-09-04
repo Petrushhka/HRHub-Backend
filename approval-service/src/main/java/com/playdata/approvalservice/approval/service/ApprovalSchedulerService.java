@@ -18,6 +18,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ApprovalSchedulerService {
 
     private final ReportsRepository reportsRepository;

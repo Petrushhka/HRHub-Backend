@@ -13,6 +13,14 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:prod}
 
+cloud:
+  config:
+    enabled: false
+  gateway:
+    discovery:
+      locator:
+        enabled: false
+
   # PostgreSQL Database Configuration
   datasource:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/hrdb}

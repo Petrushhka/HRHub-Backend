@@ -4,17 +4,17 @@ server:
 spring:
   application:
     name: gateway-service
-  datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/postgres}
-    username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD}
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 5
-      minimum-idle: 2
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+#  datasource: --> gateway에서는 db 연결이 필요없음.
+#    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/postgres}
+#    username: ${DATABASE_USERNAME:postgres}
+#    password: ${DATABASE_PASSWORD}
+#    driver-class-name: org.postgresql.Driver
+#    hikari:
+#      maximum-pool-size: 5
+#      minimum-idle: 2
+#      connection-timeout: 30000
+#      idle-timeout: 600000
+#      max-lifetime: 1800000
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect

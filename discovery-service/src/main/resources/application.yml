@@ -10,3 +10,4 @@ eureka:
   client:
     register-with-eureka: false
     fetch-registry: false
+    enabled: false #유레카 사용 안함(당장 서버로 돌릴필요없음 2025.09.05)

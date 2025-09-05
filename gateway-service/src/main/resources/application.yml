@@ -1,3 +1,135 @@
+server:
+  port: 8080
+
 spring:
   application:
     name: gateway-service
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+  cloud:
+    config:
+      enabled: false
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: "${CORS_ORIGINS:http://localhost:5173}"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+      routes:
+        - id: hr-service
+          uri: ${HR_SERVICE_URL:http://hr-service:8080}
+          predicates:
+            - Path=/hr/**
+          filters:
+            - AuthorizationHeaderFilter
+        - id: notice-service-notice
+          uri: ${NOTICE_SERVICE_URL:http://notice-service:8080}
+          predicates:
+            - Path=/notice/**
+          filters:
+            - AuthorizationHeaderFilter
+        - id: notice-service-community
+          uri: ${NOTICE_SERVICE_URL:http://notice-service:8080}
+          predicates:
+            - Path=/community/**
+          filters:
+            - AuthorizationHeaderFilter
+        - id: notice-service-report
+          uri: ${NOTICE_SERVICE_URL:http://notice-service:8080}
+          predicates:
+            - Path=/report/**
+          filters:
+            - AuthorizationHeaderFilter
+        - id: approval-service
+          uri: ${APPROVAL_SERVICE_URL:http://approval-service:8080}
+          predicates:
+            - Path=/approval/**
+          filters:
+            - AuthorizationHeaderFilter
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+# AWS S3 설정
+cloud:
+  aws:
+    s3:
+      bucket: ${S3_BUCKET:hrhub-bucket}
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}
+    region:
+      static: ${AWS_REGION:ap-northeast-2}
+
+# JWT 설정
+jwt:
+  expiration: ${JWT_EXPIRATION:30000}
+  secretKey: ${JWT_SECRET}
+  secretKeyRt: ${JWT_REFRESH_SECRET}
+  expirationRt: ${JWT_REFRESH_EXPIRATION:180000000}
+
+# OpenAI 설정
+openai:
+  api-key: ${OPENAI_API_KEY}
+
+# Eureka 비활성화
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,refresh,beans
+  endpoint:
+    health:
+      show-details: always
+
+# Springdoc OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+    display-request-duration: true
+    doc-expansion: none

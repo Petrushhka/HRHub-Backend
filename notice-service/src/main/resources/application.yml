@@ -1,19 +1,113 @@
+server:
+  port: 8080
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
 
 spring:
   application:
-    name: notice
-#  profiles:
-#    active: local
+    name: notice-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:prod}
 
+  # === Database ===
+  datasource:
+    # Supabase 풀러(예시). 환경변수로 덮어쓰게 해둠.
+    url: ${DATABASE_URL:jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&preferQueryMode=simple&applicationName=hr-service}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:3}
+      minimum-idle: ${DB_MIN_IDLE:1}
+      idle-timeout: ${DB_IDLE_TIMEOUT:60000}
+      max-lifetime: ${DB_MAX_LIFETIME:180000}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
+      leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD:20000}
+
+  # === JPA ===
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:none}   # 커넥션 절약
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: true
+
+  # === Redis (선택) ===
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2000ms}
+      lettuce:
+        pool:
+          max-active: ${REDIS_POOL_MAX_ACTIVE:8}
+          max-idle: ${REDIS_POOL_MAX_IDLE:8}
+          min-idle: ${REDIS_POOL_MIN_IDLE:0}
+
+  # === AWS S3 (선택) ===
+  cloud:
+    aws:
+      s3:
+        bucket: ${AWS_S3_BUCKET:hrhub-bucket}
+      credentials:
+        accessKey: ${AWS_ACCESS_KEY:}
+        secretKey: ${AWS_SECRET_KEY:}
+      region:
+        static: ${AWS_REGION:ap-northeast-2}
+      stack:
+        auto: false
+
+  # === Mail (선택) ===
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: ${MAIL_HOST:smtp.gmail.com}
+
+# === JWT ===
+jwt:
+  expiration: ${JWT_EXPIRATION:1800000}
+  secretKey: ${JWT_SECRET_KEY:}
+  secretKeyRt: ${JWT_SECRET_KEY_RT:}
+  expirationRt: ${JWT_EXPIRATION_RT:604800000}
+
+# === Actuator ===
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS:health,info}
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: ${HEALTH_SHOW_DETAILS:never}
+
+# === Swagger ===
 springdoc:
   api-docs:
-    path: /v3/api-docs # default value
+    path: /v3/api-docs
     groups:
-      enabled: true # API grouping
-
+      enabled: true
   swagger-ui:
     path: /swagger-ui.html
-    tags-sorter: alpha # 태그 정렬 방식 (알파벳순)
-    operations-sorter: alpha # 메서드 정렬 방식
-    display-request-duration: true # 요청에 소요된 시간 표시
-    doc-expansion: none # 문서 초기 펼침 상태
+    tags-sorter: alpha
+    operations-sorter: alpha
+    display-request-duration: true
+    doc-expansion: none
+    disable-swagger-default-url: true
+  show-actuator: ${SWAGGER_SHOW_ACTUATOR:false}

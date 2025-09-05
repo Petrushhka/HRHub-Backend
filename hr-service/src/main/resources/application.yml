@@ -1,4 +1,3 @@
-#
 server:
   port: 8080
   servlet:
@@ -13,39 +12,32 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:prod}
 
-cloud:
-  config:
-    enabled: false
-  gateway:
-    discovery:
-      locator:
-        enabled: false
-
-  # PostgreSQL Database Configuration
+  # === Database ===
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:6543/postgres}
+    # Supabase 풀러(예시). 환경변수로 덮어쓰게 해둠.
+    url: ${DATABASE_URL:jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&preferQueryMode=simple&applicationName=hr-service}
     username: ${DATABASE_USERNAME:postgres}
-    password: ${DATABASE_PASSWORD}
+    password: ${DATABASE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: ${DB_MAX_POOL_SIZE:5}
-      minimum-idle: ${DB_MIN_IDLE:2}
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:3}
+      minimum-idle: ${DB_MIN_IDLE:1}
       idle-timeout: ${DB_IDLE_TIMEOUT:60000}
       max-lifetime: ${DB_MAX_LIFETIME:180000}
       connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
       leak-detection-threshold: ${DB_LEAK_DETECTION_THRESHOLD:20000}
 
-  # JPA Configuration
+  # === JPA ===
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:validate}
+      ddl-auto: ${JPA_DDL_AUTO:none}   # 커넥션 절약
     show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: true
 
-  # Redis Configuration
+  # === Redis (선택) ===
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -58,26 +50,25 @@ cloud:
           max-idle: ${REDIS_POOL_MAX_IDLE:8}
           min-idle: ${REDIS_POOL_MIN_IDLE:0}
 
-  # AWS S3 Configuration
+  # === AWS S3 (선택) ===
   cloud:
     aws:
       s3:
         bucket: ${AWS_S3_BUCKET:hrhub-bucket}
-        region: ${AWS_REGION:ap-northeast-2}
       credentials:
-        access-key: ${AWS_ACCESS_KEY}
-        secret-key: ${AWS_SECRET_KEY}
+        access-key: ${AWS_ACCESS_KEY:}
+        secret-key: ${AWS_SECRET_KEY:}
       region:
         static: ${AWS_REGION:ap-northeast-2}
       stack:
         auto: false
 
-  # Email Configuration
+  # === Mail (선택) ===
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -88,41 +79,25 @@ cloud:
           ssl:
             trust: ${MAIL_HOST:smtp.gmail.com}
 
-# JWT Configuration
+# === JWT ===
 jwt:
   expiration: ${JWT_EXPIRATION:1800000}
-  secretKey: ${JWT_SECRET_KEY}
-  secretKeyRt: ${JWT_SECRET_KEY_RT}
+  secretKey: ${JWT_SECRET_KEY:}
+  secretKeyRt: ${JWT_SECRET_KEY_RT:}
   expirationRt: ${JWT_EXPIRATION_RT:604800000}
 
-# Eureka Client Configuration
-eureka:
-  client:
-    register-with-eureka: ${EUREKA_REGISTER:true}
-    fetch-registry: ${EUREKA_FETCH_REGISTRY:true}
-    service-url:
-      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka}
-  instance:
-    prefer-ip-address: true
-    instance-id: ${spring.cloud.client.ip-address:${spring.application.name}}:${spring.application.instance_id:${random.value}}
-    lease-renewal-interval-in-seconds: ${EUREKA_LEASE_RENEWAL:30}
-    lease-expiration-duration-in-seconds: ${EUREKA_LEASE_EXPIRATION:90}
-
-# Management and Actuator Configuration
+# === Actuator ===
 management:
   endpoints:
     web:
       exposure:
-        include: ${MANAGEMENT_ENDPOINTS:health,info,metrics}
+        include: ${MANAGEMENT_ENDPOINTS:health,info}
       base-path: /actuator
   endpoint:
     health:
-      show-details: ${HEALTH_SHOW_DETAILS:when-authorized}
-  info:
-    env:
-      enabled: true
+      show-details: ${HEALTH_SHOW_DETAILS:never}
 
-# Springdoc (Swagger) Configuration
+# === Swagger ===
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -137,23 +112,23 @@ springdoc:
     disable-swagger-default-url: true
   show-actuator: ${SWAGGER_SHOW_ACTUATOR:false}
 
-# OpenAI Configuration
+# === OpenAI (선택) ===
 openai:
-  api-key: ${OPENAI_API_KEY}
+  api-key: ${OPENAI_API_KEY:}
   model: ${OPENAI_MODEL:gpt-3.5-turbo}
   max-tokens: ${OPENAI_MAX_TOKENS:1000}
 
-# OAuth Configuration
+# === Kakao OAuth (선택) ===
 oauth:
   kakao:
-    client-id: ${KAKAO_CLIENT_ID}
-    client-secret: ${KAKAO_CLIENT_SECRET}
+    client-id: ${KAKAO_CLIENT_ID:}
+    client-secret: ${KAKAO_CLIENT_SECRET:}
     redirect-uri: ${KAKAO_REDIRECT_URI:http://localhost:8080/oauth/kakao/callback}
     authorization-uri: ${KAKAO_AUTH_URI:https://kauth.kakao.com/oauth/authorize}
     token-uri: ${KAKAO_TOKEN_URI:https://kauth.kakao.com/oauth/token}
     user-info-uri: ${KAKAO_USER_INFO_URI:https://kapi.kakao.com/v2/user/me}
 
-# Logging Configuration
+# === Logging ===
 logging:
   level:
     com.playdata: ${LOG_LEVEL:INFO}
@@ -162,23 +137,14 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: ${SQL_BIND_LOG_LEVEL:WARN}
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
-# Application Specific Configuration
+# === App Meta ===
 app:
   name: ${APP_NAME:HR Hub Service}
   version: ${APP_VERSION:1.0.0}
   description: ${APP_DESCRIPTION:Human Resources Management System}
-  cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://yourdomain.com}
-    allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS}
-    allowed-headers: ${CORS_ALLOWED_HEADERS:*}
-    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
 
 weather:
   api:
-    key: ZXtHl7IjyIssn+uPYkhLiyHlbIyxO1Zj89v0YwTWPGkSka2+/t47TsClb/2z8sfd5pLYfRfGmyVC6aMM4UgrZg==
-#    key: ZXtHl7IjyIssn%2BuPYkhLiyHlbIyxO1Zj89v0YwTWPGkSka2%2B%2Ft47TsClb%2F2z8sfd5pLYfRfGmyVC6aMM4UgrZg%3D%3D
+    key: ${WEATHER_API_KEY:}
     base-url: http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0
-#  profiles:
-#    active: local

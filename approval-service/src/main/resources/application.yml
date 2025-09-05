@@ -15,7 +15,7 @@ spring:
   # === Database ===
   datasource:
     # Supabase 풀러(예시). 환경변수로 덮어쓰게 해둠.
-    url: ${DATABASE_URL:jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&preferQueryMode=simple&applicationName=hr-service}
+    url: ${DATABASE_URL:jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0&preferQueryMode=simple&applicationName=approval-service}
     username: ${DATABASE_USERNAME:postgres}
     password: ${DATABASE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
@@ -111,3 +111,6 @@ springdoc:
     doc-expansion: none
     disable-swagger-default-url: true
   show-actuator: ${SWAGGER_SHOW_ACTUATOR:false}
+
+hr:
+  base-url: ${HR_BASE_URL:https://hr-service.zeabur.app}

@@ -40,7 +40,6 @@ spring:
   # === Redis (선택) ===
   data:
     redis:
-      url: ${REDIS_URL}
       # zeabur에서는 아래와같이 접근해야함.
       host: redis.zeabur.internal
       port: 6379

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -23,6 +24,7 @@ public class RedisConfig {
 //    private int port;
 
     @Bean
+    @ConditionalOnMissingBean(name = "redisObjectMapper")
     public ObjectMapper redisObjectMapper() {
         return new ObjectMapper()
                 .registerModule(new JavaTimeModule())               // LocalDate 지원
@@ -42,6 +44,7 @@ public class RedisConfig {
 
     // spring과 redis가 상호작용할 때 redis key, value의 형식을 정의
     @Bean
+    @ConditionalOnMissingBean(name = "redisTemplate")
     public RedisTemplate<String, Object> redisTemplate(
             RedisConnectionFactory factory,
             ObjectMapper redisObjectMapper

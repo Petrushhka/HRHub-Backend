@@ -40,16 +40,12 @@ spring:
   # === Redis (선택) ===
   data:
     redis:
-      url: ${SPRING_DATA_REDIS_URL:redis://default:${REDIS_PASSWORD}@redis.zeabur.internal:6379}
+      # Zeabur에서 자동으로 주입되는 REDIS_URI 사용 (형식: redis://:password@host:6379)
+      url: ${REDIS_URI}
       client-type: lettuce
       timeout: ${REDIS_TIMEOUT:2000ms}
       ssl:
         enabled: ${SPRING_DATA_REDIS_SSL_ENABLED:false}
-      # zeabur에서는 아래와같이 접근해야함.
-#      host: ${REDIS_HOST}
-#      port: ${REDIS_PORT}
-#      password: ${REDIS_PASSWORD}
-#      timeout: ${REDIS_TIMEOUT:2000ms}
       lettuce:
         pool:
           max-active: ${REDIS_POOL_MAX_ACTIVE:8}

@@ -43,7 +43,7 @@ spring:
       # zeabur에서는 아래와같이 접근해야함.
       host: redis.zeabur.internal
       port: 6379
-      password: ${REDIS_PASSWORD:}
+      password: ${REDIS_PASSWORD}
       timeout: ${REDIS_TIMEOUT:2000ms}
       lettuce:
         pool:

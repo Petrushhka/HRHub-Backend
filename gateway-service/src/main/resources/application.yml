@@ -16,16 +16,16 @@ spring:
 #      idle-timeout: 600000
 #      max-lifetime: 1800000
 
-  jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-    hibernate:
-      ddl-auto: none
+#  jpa:
+#    database-platform: org.hibernate.dialect.PostgreSQLDialect
+#    hibernate:
+#      ddl-auto: none
 
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+#  data: -> gateway에서 redis랑 연결할 이유가 없음
+#    redis:
+#      host: ${REDIS_HOST}
+#      port: ${REDIS_PORT}
+#      password: ${REDIS_PASSWORD:}
 
   cloud:
     config:
@@ -84,27 +84,27 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
 
-# AWS S3 설정
-cloud:
-  aws:
-    s3:
-      bucket: ${S3_BUCKET:hrhub-bucket}
-    credentials:
-      access-key: ${AWS_ACCESS_KEY}
-      secret-key: ${AWS_SECRET_KEY}
-    region:
-      static: ${AWS_REGION:ap-northeast-2}
+# AWS S3 설정 -> gateway에서 필요없는 설정
+#cloud:
+#  aws:
+#    s3:
+#      bucket: ${S3_BUCKET:hrhub-bucket}
+#    credentials:
+#      access-key: ${AWS_ACCESS_KEY}
+#      secret-key: ${AWS_SECRET_KEY}
+#    region:
+#      static: ${AWS_REGION:ap-northeast-2}
 
 # JWT 설정
 jwt:
   expiration: ${JWT_EXPIRATION:30000}
-  secretKey: ${JWT_SECRET}
-  secretKeyRt: ${JWT_REFRESH_SECRET}
+  secretKey: ${JWT_SECRET_KEY}
+  secretKeyRt: ${JWT_SECRET_KEY_RT}
   expirationRt: ${JWT_REFRESH_EXPIRATION:180000000}
 
 # OpenAI 설정
-openai:
-  api-key: ${OPENAI_API_KEY}
+#openai:
+#  api-key: ${OPENAI_API_KEY}
 
 # Eureka 비활성화
 eureka:

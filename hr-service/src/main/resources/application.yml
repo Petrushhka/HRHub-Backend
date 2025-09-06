@@ -40,6 +40,10 @@ spring:
   # === Redis (선택) ===
   data:
     redis:
+      # zeabur에서는 아래와같이 접근해야함.
+#      host: ${REDIS_HOST}
+#      port: ${REDIS_PORT}
+#      password: ${REDIS_PASSWORD}
       # Zeabur에서 자동으로 주입되는 REDIS_URI 사용 (형식: redis://:password@host:6379)
       url: ${REDIS_URI}
       client-type: lettuce

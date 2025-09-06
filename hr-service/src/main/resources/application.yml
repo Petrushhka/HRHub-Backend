@@ -57,8 +57,8 @@ spring:
       s3:
         bucket: ${AWS_S3_BUCKET:hrhub-bucket}
       credentials:
-        accessKey: ${AWS_ACCESS_KEY:}
-        secretKey: ${AWS_SECRET_KEY:}
+        accessKey: ${AWS_ACCESS_KEY}
+        secretKey: ${AWS_SECRET_KEY}
       region:
         static: ${AWS_REGION:ap-northeast-2}
       stack:
@@ -68,8 +68,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:

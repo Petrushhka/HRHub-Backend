@@ -44,7 +44,6 @@ spring:
       port: 6379
       username: default
       password: ${REDIS_PASSWORD}
-      ssl: false
       timeout: ${REDIS_TIMEOUT:2000ms}
       lettuce:
         pool:
@@ -69,8 +68,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:

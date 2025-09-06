@@ -64,20 +64,20 @@ spring:
         auto: false
 
   # === Mail (선택) ===
-#  mail: -> notic-service에서 필요없는 설정
-#    host: ${MAIL_HOST:smtp.gmail.com}
-#    port: ${MAIL_PORT:587}
-#    username: ${MAIL_USERNAME:}
-#    password: ${MAIL_PASSWORD:}
-#    properties:
-#      mail:
-#        smtp:
-#          auth: true
-#          starttls:
-#            enable: true
-#            required: true
-#          ssl:
-#            trust: ${MAIL_HOST:smtp.gmail.com}
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            trust: ${MAIL_HOST:smtp.gmail.com}
 
 # === JWT ===
 jwt:

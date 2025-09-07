@@ -40,10 +40,11 @@ spring:
   # === Redis (선택) ===
   data:
     redis:
-      host: redis.zeabur.internal
-      port: 6379
-      username: default
-      password: ${REDIS_PASSWORD}
+      url: ${REDIS_URI}
+#      host: redis.zeabur.internal
+#      port: 6379
+#      username: default
+#      password: ${REDIS_PASSWORD}
       timeout: ${REDIS_TIMEOUT:2000ms}
       lettuce:
         pool:

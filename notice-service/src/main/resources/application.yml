@@ -112,3 +112,6 @@ springdoc:
     doc-expansion: none
     disable-swagger-default-url: true
   show-actuator: ${SWAGGER_SHOW_ACTUATOR:false}
+
+gateway:
+  base-url: ${GATEWAY_BASE_URL}

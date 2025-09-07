@@ -7,6 +7,7 @@ import com.playdata.noticeservice.common.dto.HrUserBulkResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpEntity;
@@ -33,10 +34,12 @@ public class HrUserClient {
     private final Environment env;
     private final ObjectMapper objectMapper;
 
+    @Value("${gateway.base-url}")
+    private String gatewayBaseUrl;
+
     public HrUserResponse getUserInfo(Long userId) {
         // gateway 주소를 통해 요청 (Eureka 통해 포워딩됨)
-        String gatewayUrl = env.getProperty("gateway.url", "http://localhost:8000"); // application.properties에서 관리 가능
-        String url = gatewayUrl + "/hr/employees/" + userId;
+        String url = gatewayBaseUrl + "/hr/employees/" + userId;
 
         // 🔐 현재 요청에서 Authorization 헤더 가져오기
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
@@ -66,9 +69,7 @@ public class HrUserClient {
 
     public List<HrUserResponse> getUserInfoBulk2(Set<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) return List.of();
-
-        String gatewayUrl = env.getProperty("gateway.url", "http://localhost:8000");
-        String url = gatewayUrl + "/hr/employees/bulk";
+        String url = gatewayBaseUrl + "/hr/employees/bulk";
 
 //        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
 //        String token = request.getHeader("Authorization");
@@ -108,8 +109,7 @@ public class HrUserClient {
     public List<HrUserResponse> getUserInfoBulk(Set<Long> userIds, String token) {
         if (userIds == null || userIds.isEmpty()) return List.of();
 
-        String gatewayUrl = env.getProperty("gateway.url", "http://localhost:8000");
-        String url = gatewayUrl + "/hr/employees/bulk";
+        String url = gatewayBaseUrl + "/hr/employees/bulk";
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", token);

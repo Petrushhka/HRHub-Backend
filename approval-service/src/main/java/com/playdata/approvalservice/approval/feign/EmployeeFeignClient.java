@@ -18,7 +18,7 @@ public interface EmployeeFeignClient {
      * @param employeeId 조회할 직원의 ID
      * @return 직원의 정보가 담긴 ResponseEntity
      */
-    @GetMapping("/api/employees/{id}")
+    @GetMapping("/employees/{id}")
     ResponseEntity<EmployeeResDto> getById(@PathVariable("id") Long employeeId);
 
     /**
@@ -26,7 +26,7 @@ public interface EmployeeFeignClient {
      * @param email 조회할 직원의 이메일
      * @return 직원의 정보가 담긴 ResponseEntity
      */
-    @GetMapping("/api/employees/email/{email}")
+    @GetMapping("/employees/email/{email}")
     ResponseEntity<EmployeeResDto> getEmployeeByEmail(@PathVariable("email") String email);
 
     /**
@@ -35,7 +35,7 @@ public interface EmployeeFeignClient {
      * @param employeeIds 조회할 직원 ID 목록
      * @return 직원 ID와 이름이 매핑된 Map을 담은 ResponseEntity
      */
-    @GetMapping("/api/employees/names")
+    @GetMapping("/employees/names")
     ResponseEntity<Map<Long, String>> getEmployeeNamesByEmployeeIds(
             @RequestParam("ids") List<Long> employeeIds
     );
@@ -46,13 +46,13 @@ public interface EmployeeFeignClient {
      * @param email 조회할 직원의 이메일
      * @return 직원의 ID(Long)가 담긴 ResponseEntity
      */
-    @GetMapping("/api/employees/id")
+    @GetMapping("/employees/id")
     ResponseEntity<Long> findIdByEmail(@RequestParam("email") String email);
 
     /**
      * 모든 직원 status 조회
      * @return
      */
-    @GetMapping("/api/employees/list/active")
+    @GetMapping("/employees/list/active")
     ResponseEntity<List<EmployeeResDto>> getActiveEmployees();
 }

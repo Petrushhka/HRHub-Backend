@@ -77,7 +77,27 @@ public class ReportSpecifications {
                             break;
 
                         case "reference":
-                            // 1. `detail` 컬럼에서 모든 참조자의 employeeId 값만 추출하여 JSON 배열을 만듭니다.
+                            // jsonb_path_exists(detail, '$.references[*] ? (@.employeeId == $empId)', jsonb_build_object('empId', to_jsonb(:userId)))
+                            var path = "$.references[*] ? (@.employeeId == $empId)";
+
+                            var vars = criteriaBuilder.function(
+                                    "jsonb_build_object",
+                                    Object.class,
+                                    criteriaBuilder.literal("empId"),
+                                    criteriaBuilder.function("to_jsonb", Object.class, criteriaBuilder.literal(userId))
+                            );
+
+                            var pathExists = criteriaBuilder.function(
+                                    "jsonb_path_exists",
+                                    Boolean.class,
+                                    root.get("detail"),                      // detail :: jsonb
+                                    criteriaBuilder.literal(path),           // jsonpath
+                                    vars                                     // vars jsonb
+                            );
+
+                            rolePredicates.add(criteriaBuilder.isTrue(pathExists));
+                            break;
+                            /* // 1. `detail` 컬럼에서 모든 참조자의 employeeId 값만 추출하여 JSON 배열을 만듭니다.
                             //    SQL 예시: JSON_EXTRACT(detail, '$.references[*].employeeId') -> 결과: [5, 7, 8]
                             Expression<String> employeeIdsJsonArray = criteriaBuilder.function(
                                     "JSON_EXTRACT",
@@ -112,7 +132,9 @@ public class ReportSpecifications {
                             Predicate inLine = criteriaBuilder.equal(involvedJoin.get("employeeId"), userId);
                             rolePredicates.add(criteriaBuilder.and(notMyReport, inLine));
                             break;
-                    }
+                    } */
+
+
                 }
 
                 // 생성된 역할 조건들이 있다면, 모두 OR로 묶어서 최종 predicate에 AND 조건으로 추가

@@ -120,7 +120,7 @@ public class ReportSpecifications {
                             // 3. 생성된 조건을 리스트에 추가합니다.
                             rolePredicates.add(jsonContainsPredicate);
                             break;
-
+*/
                         case "involved":
                             // '결재 관여'는 '내 기안이 아니면서, 결재선에 포함된' 문서를 의미합니다.
                             @SuppressWarnings("unchecked")
@@ -132,7 +132,7 @@ public class ReportSpecifications {
                             Predicate inLine = criteriaBuilder.equal(involvedJoin.get("employeeId"), userId);
                             rolePredicates.add(criteriaBuilder.and(notMyReport, inLine));
                             break;
-                    } */
+                    }
 
 
                 }

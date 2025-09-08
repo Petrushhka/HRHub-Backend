@@ -99,7 +99,7 @@ public class Reports extends BaseTimeEntity {
      * 보고서 첨부 파일
      */
     @Setter
-    @Column(name = "report_detail", columnDefinition = "JSON")
+    @Column(name = "report_detail", columnDefinition = "jsonb")
     private String detail;
 
     /**

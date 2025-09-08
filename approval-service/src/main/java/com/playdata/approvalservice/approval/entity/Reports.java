@@ -42,7 +42,7 @@ public class Reports extends BaseTimeEntity {
     /**
      * 템플릿 데이터
      */
-    @Column(name = "report_template_data", columnDefinition = "JSON")
+    @Column(name = "report_template_data", columnDefinition = "jsonb")
     private String reportTemplateData;
 
     /**

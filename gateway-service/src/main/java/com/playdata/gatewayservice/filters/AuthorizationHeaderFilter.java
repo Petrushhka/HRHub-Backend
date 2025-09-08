@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -52,6 +53,10 @@ public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory {
     @Override
     public GatewayFilter apply(Object config) {
         return (exchange, chain) -> {
+            // 프리플라이트는 인증 검사 없이 통과
+            if (exchange.getRequest().getMethod() == HttpMethod.OPTIONS) {
+                return chain.filter(exchange);
+            }
             String path = exchange.getRequest().getURI().getPath();
             AntPathMatcher antPathMatcher = new AntPathMatcher();
             boolean isAllowed = allowedPaths.stream().anyMatch(url -> antPathMatcher.match(url, path));
@@ -100,6 +105,17 @@ public class AuthorizationHeaderFilter extends AbstractGatewayFilterFactory {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(httpStatus);
         log.error(msg);
+
+        // 요청 Origin을 에러 응답에도 반영
+        String origin = exchange.getRequest().getHeaders().getOrigin();
+        if (origin != null) {
+            response.getHeaders().add("Access-Control-Allow-Origin", origin);
+            response.getHeaders().add("Vary", "Origin");
+            response.getHeaders().add("Access-Control-Allow-Credentials", "true");
+            response.getHeaders().add("Access-Control-Allow-Headers", "authorization,content-type");
+            response.getHeaders().add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+            response.getHeaders().add("Access-Control-Expose-Headers", "Authorization,Location");
+        }
 
         byte[] bytes = msg.getBytes(StandardCharsets.UTF_8);
         DataBuffer buffer = response.bufferFactory().wrap(bytes);

@@ -115,4 +115,4 @@ springdoc:
   show-actuator: ${SWAGGER_SHOW_ACTUATOR:false}
 
 hr:
-  base-url: ${HR_BASE_URL:https://hr-service.zeabur.app}
+  base-url: ${HR_BASE_URL:https://hr-service.zeabur.app/hr}
